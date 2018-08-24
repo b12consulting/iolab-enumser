@@ -746,7 +746,8 @@ HRESULT CEnumerateSerial::UsingWMI(_Inout_ CPortAndNamesArray& ports)
             //Also get the friendly name of the port
             ATL::CComVariant varProperty2;
 #pragma warning(suppress: 26446 26482)
-            if (SUCCEEDED(apObj[n]->Get(L"Name", 0, &varProperty2, nullptr, nullptr)) && (varProperty2.vt == VT_BSTR))
+            // PREVIOUSLY "Name". "PNPDeviceID" => COM3 <USB\VID_1881&PID_0400\00017A>
+            if (SUCCEEDED(apObj[n]->Get(L"PNPDeviceID", 0, &varProperty2, nullptr, nullptr)) && (varProperty2.vt == VT_BSTR))
             {
             #ifdef _UNICODE
               std::wstring szName(varProperty2.bstrVal);

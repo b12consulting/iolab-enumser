@@ -3,7 +3,7 @@ Module : enumser.h
 Purpose: Defines the interface for a class to enumerate the serial ports installed on a PC
          using a number of different approaches
 
-Copyright (c) 1998 - 2018 by PJ Naughter (Web: www.naughter.com, Email: pjna@naughter.com)
+Copyright (c) 1998 - 2019 by PJ Naughter (Web: www.naughter.com, Email: pjna@naughter.com)
 
 All rights reserved.
 
@@ -70,6 +70,16 @@ to maintain a single distribution point for the source code.
 #pragma message("To avoid this message, please put atlstr.h in your pre compiled header (normally stdafx.h)")
 #include <atlstr.h>
 #endif //#ifndef __ATLSTR_H__
+
+#if !defined(NO_CENUMERATESERIAL_USING_SETUPAPI1) || !defined(NO_CENUMERATESERIAL_USING_SETUPAPI2)
+#include <winioctl.h>
+
+#ifndef _INC_SETUPAPI
+#pragma message("To avoid this message, please put setupapi.h in your pre compiled header (normally stdafx.h)")
+#include <setupapi.h>
+#endif //#ifndef _INC_SETUPAPI
+
+#endif //#if !defined(NO_CENUMERATESERIAL_USING_SETUPAPI1) || !defined(NO_CENUMERATESERIAL_USING_SETUPAPI2)
 
 
 ///////////////////////// Classes /////////////////////////////////////////////
@@ -139,6 +149,5 @@ protected:
   static _Return_type_success_(return != false) bool IsNumeric(_In_z_ LPCSTR pszString, _In_ bool bIgnoreColon) noexcept;
   static _Return_type_success_(return != false) bool IsNumeric(_In_z_ LPCWSTR pszString, _In_ bool bIgnoreColon) noexcept;
 };
-
 
 #endif //#ifndef __ENUMSER_H__

@@ -1,7 +1,7 @@
 /*
 Module : enumser.cpp
 Purpose: Implementation for a class to enumerate the serial ports installed on a PC using a number
-         of different approaches. 
+         of different approaches.
 Created: PJN / 03-10-1998
 History: PJN / 23-02-1999 Code now uses QueryDosDevice if running on NT to determine 
                           which serial ports are available. This avoids having to open 
@@ -195,8 +195,15 @@ History: PJN / 23-02-1999 Code now uses QueryDosDevice if running on NT to deter
                           2. Fixed a number of C++ core guidelines compiler warnings. These changes mean that
                           the code will now only compile on VC 2017 or later.
                           3. Remove the code path which supported CENUMERATESERIAL_MFC_EXTENSIONS
+         PJN / 16-09-2018 1. Fixed a number of compiler warnings when using VS 2017 15.8.4
+         PJN / 15-01-2019 1. Updated copyright details.
+                          2. Updated the sample app to log the time each method call takes
+                          3. Fixed a compilation error "unknown identifier 'HDEVINFO'" in enumser.h. Thanks to Drew Freer for
+                          reporting this issue.
+         PJN / 22-06-2019 1. Updated the code to clean compile on VC 2019
+         PJN / 06-11-2019 1. Updated initialization of various structs to use C++ 11 list initialization
 
-Copyright (c) 1998 - 2018 by PJ Naughter (Web: www.naughter.com, Email: pjna@naughter.com)
+Copyright (c) 1998 - 2019 by PJ Naughter (Web: www.naughter.com, Email: pjna@naughter.com)
 
 All rights reserved.
 
@@ -220,13 +227,6 @@ to maintain a single distribution point for the source code.
 /////////////////////////////// Macros / Defines //////////////////////////////
 
 #if !defined(NO_CENUMERATESERIAL_USING_SETUPAPI1) || !defined(NO_CENUMERATESERIAL_USING_SETUPAPI2)
-  #include <winioctl.h>
-
-  #ifndef _INC_SETUPAPI
-    #pragma message("To avoid this message, please put setupapi.h in your pre compiled header (normally stdafx.h)")
-    #include <setupapi.h>
-  #endif //#ifndef _INC_SETUPAPI
-
   #pragma comment(lib, "setupapi.lib")
 #endif //#if !defined(NO_CENUMERATESERIAL_USING_SETUPAPI1) || !defined(NO_CENUMERATESERIAL_USING_SETUPAPI2)
 
@@ -248,12 +248,12 @@ to maintain a single distribution point for the source code.
     #pragma message("To avoid this message, please put WBemCli.h in your pre compiled header (normally stdafx.h)")
     #include <WbemCli.h>
   #endif //#ifndef __IWbemLocator_FWD_DEFINED__
-  
+
   #ifndef _INC_COMDEF
     #pragma message("To avoid this message, please put comdef.h in your pre compiled header (normally stdafx.h)")
     #include <comdef.h>
   #endif //#ifndef _INC_COMDEF
-    
+
   #pragma comment(lib, "WbemUuid.lib")
 #endif //#ifndef NO_CENUMERATESERIAL_USING_WMI
 
@@ -286,7 +286,7 @@ _Return_type_success_(return != false) bool CEnumerateSerial::UsingCreateFile(_I
 
     //Try to open the port
     bool bSuccess = false;
-    ATL::CHandle port(CreateFile(sPort, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0));
+    ATL::CHandle port(CreateFile(sPort, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr));
     if (port == INVALID_HANDLE_VALUE)
     {
       const DWORD dwError = GetLastError();
@@ -329,14 +329,14 @@ _Return_type_success_(return != false) bool CEnumerateSerial::RegQueryValueStrin
   }
 
   //Allocate enough bytes for the return value
-#pragma warning(suppress: 26472)
+#pragma warning(suppress: 26472 26489)
   sValue.resize(static_cast<size_t>(nChars) + 1); //+1 is to allow us to null terminate the data if required
   const DWORD dwAllocatedSize = ((nChars + 1)*sizeof(TCHAR));
 
   //We will use RegQueryValueEx directly here because ATL::CRegKey::QueryStringValue does not handle non-null terminated data
   DWORD dwType = 0;
   ULONG nBytes = dwAllocatedSize;
-#pragma warning(suppress: 26446 26490)
+#pragma warning(suppress: 26446 26489 26490)
   nStatus = RegQueryValueEx(key, lpValueName, nullptr, &dwType, reinterpret_cast<LPBYTE>(&(sValue[0])), &nBytes);
   if (nStatus != ERROR_SUCCESS)
   {
@@ -353,11 +353,11 @@ _Return_type_success_(return != false) bool CEnumerateSerial::RegQueryValueStrin
     SetLastError(ERROR_INVALID_DATA);
     return false;
   }
-#pragma warning(suppress: 26446)
+#pragma warning(suppress: 26446 26489)
   if (sValue[(nBytes / sizeof(TCHAR)) - 1] != _T('\0'))
   {
     //Forcibly null terminate the data ourselves
-#pragma warning(suppress: 26446)
+#pragma warning(suppress: 26446 26489)
     sValue[(nBytes / sizeof(TCHAR))] = _T('\0');
   }
 
@@ -405,7 +405,7 @@ _Return_type_success_(return != false) bool CEnumerateSerial::QueryUsingSetupAPI
   //Finally do the enumeration
   bool bMoreItems = true;
   int nIndex = 0;
-  SP_DEVINFO_DATA devInfo = { 0 };
+  SP_DEVINFO_DATA devInfo{};
   while (bMoreItems)
   {
     //Enumerate the current device
@@ -435,6 +435,7 @@ _Return_type_success_(return != false) bool CEnumerateSerial::QueryUsingSetupAPI
       //If the port was a serial port, then also try to get its friendly name
       if (bAdded)
       {
+#pragma warning(suppress: 26489)
         if (QueryDeviceDescription(hDevInfoSet, devInfo, pair.second))
 #pragma warning(suppress: 26489)
           ports.push_back(pair);
@@ -601,7 +602,7 @@ _Return_type_success_(return != false) bool CEnumerateSerial::UsingGetDefaultCom
     ATL::CAtlString sPort;
     sPort.Format(_T("COM%u"), i);
 
-    COMMCONFIG cc = { 0 };
+    COMMCONFIG cc{};
     DWORD dwSize = sizeof(COMMCONFIG);
     if (GetDefaultCommConfig(sPort, &cc, &dwSize))
 #pragma warning(suppress: 26489)
@@ -661,19 +662,19 @@ _Return_type_success_(return != false) bool CEnumerateSerial::UsingEnumPorts(_In
     {
       //If it looks like "COMX" then
       //add it to the array which will be returned
-#pragma warning(suppress: 26486)
+#pragma warning(suppress: 26486 26489)
       const size_t nLen = _tcslen(pPortInfo->pPortName);
       if (nLen > 3)
       {
-#pragma warning(suppress: 26486 26481)
+#pragma warning(suppress: 26481 26486 26489)
         if ((_tcsnicmp(pPortInfo->pPortName, _T("COM"), 3) == 0) && IsNumeric(&(pPortInfo->pPortName[3]), true))
         {
           //Work out the port number
-#pragma warning(suppress: 26481)
+#pragma warning(suppress: 26481 26489)
           const int nPort = _ttoi(&(pPortInfo->pPortName[3]));
           std::pair<UINT, String> pair;
           pair.first = nPort;
-#pragma warning(suppress: 26486)
+#pragma warning(suppress: 26486 26489)
           pair.second = pPortInfo->pDescription;
 #pragma warning(suppress: 26489)
           ports.push_back(pair);
@@ -730,14 +731,15 @@ HRESULT CEnumerateSerial::UsingWMI(_Inout_ CPortAndNamesArray& ports)
         ATL::CComVariant varProperty1;
 #pragma warning(suppress: 26446 26482)
         const HRESULT hrGet = apObj[n]->Get(L"DeviceID", 0, &varProperty1, nullptr, nullptr);
+#pragma warning(suppress: 26486)
         if (SUCCEEDED(hrGet) && (varProperty1.vt == VT_BSTR) && (wcslen(varProperty1.bstrVal) > 3))
         {
           //If it looks like "COMX" then add it to the array which will be returned
-#pragma warning(suppress: 26481 26486)
+#pragma warning(suppress: 26481 26486 26489)
           if ((_wcsnicmp(varProperty1.bstrVal, L"COM", 3) == 0) && IsNumeric(&(varProperty1.bstrVal[3]), true))
           {
             //Work out the port number
-#pragma warning(suppress: 26481)
+#pragma warning(suppress: 26481 26489)
             const int nPort = _wtoi(&(varProperty1.bstrVal[3]));
 
             std::pair<UINT, String> pair;
@@ -758,7 +760,7 @@ HRESULT CEnumerateSerial::UsingWMI(_Inout_ CPortAndNamesArray& ports)
               pair.second = szName;
             }
 
-#pragma warning(suppress: 26489)
+#pragma warning(suppress: 26486 26489)
             ports.push_back(pair);
           }
         }

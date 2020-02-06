@@ -1,3 +1,3 @@
 # IOLab-enumser
 
-Original project `EnumSer` version v1.35 (8 July 2018) from http://www.naughter.com/enumser.html
+Original project `EnumSer` version v1.39 (6 November 2019) from http://www.naughter.com/enumser.html
